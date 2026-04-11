@@ -1,0 +1,14 @@
+# Data files
+data/
+*.csv
+*.pkl
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
+venv/
+
+# PyCharm
+.idea/
