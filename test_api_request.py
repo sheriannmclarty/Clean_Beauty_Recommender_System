@@ -26,7 +26,10 @@ else:
 
     # === Send request to Flask API ===
     url = "http://127.0.0.1:5000/recommend"
-    payload = {"user_id": int(encoded_id), "top_n": 5}
+    payload = {
+        "user_id": int(encoded_id),
+        "top_n": 5
+    }
     response = requests.post(url, json=payload)
 
     print("\nStatus Code:", response.status_code)
