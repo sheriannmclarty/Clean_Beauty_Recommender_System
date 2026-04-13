@@ -28,16 +28,17 @@ nut_allergens = [
     'shea butter', 'argan oil', 'almond oil', 'sweet almond oil',
     'macadamia oil', 'walnut oil', 'hazelnut oil', 'cashew',
     'brazil nut', 'pecan', 'pistachio', 'coconut oil',
-    'coconut acid', 'coconut water', 'cocos nucifera',      # ← add these
+    'coconut acid', 'coconut water', 'cocos nucifera',
     'butyrospermum parkii', 'argania spinosa', 'prunus amygdalus',
-    'carthamus tinctorius'                                   # ← safflower (tree)
+    'carthamus tinctorius'
 ]
+
 # === Product categories ===
 categories = {
-    "1": "moisturizer",
-    "2": "serum",
-    "3": "foundation",
-    "4": "cleanser",
+    "1": "Moisturizers",
+    "2": "Treatments",
+    "3": "Face",
+    "4": "Cleansers",
     "5": "sunscreen"
 }
 
@@ -77,7 +78,6 @@ if melanin_users.empty:
     print("⚠️ No melanin-rich users found.")
     print("Available skin tones:", df['skin_tone'].unique())
 else:
-    # Pick randomly from top 20 most active melanin-rich users
     top_users = melanin_users['author_id'].value_counts().head(20).index.tolist()
     top_user = random.choice(top_users)
     user_row = df[df['author_id'] == top_user].iloc[0]
@@ -91,7 +91,7 @@ else:
 
     # === Send request to Flask API ===
     url = "http://127.0.0.1:5000/recommend"
-    payload = {"user_id": int(encoded_id), "top_n": 20}
+    payload = {"user_id": int(encoded_id), "top_n": 50}
     response = requests.post(url, json=payload)
 
     print("\nStatus Code:", response.status_code)
@@ -99,22 +99,29 @@ else:
         data = response.json()
         recommendations = data['recommendations']
 
-        # === Filter by category ===
-        if selected_category:
-            recommendations = [
-                r for r in recommendations
-                if selected_category.lower() in r['product_name'].lower()
-            ]
-
-        # === Merge with product ingredients ===
+        # === Merge with product ingredients FIRST ===
         for rec in recommendations:
             product_match = products_df[
                 products_df['product_name_clean'] == rec['product_name'].strip().lower()
             ]
             if not product_match.empty:
                 rec['ingredients'] = product_match.iloc[0]['ingredients']
+                rec['primary_category'] = product_match.iloc[0].get('primary_category', '')
+                rec['secondary_category'] = product_match.iloc[0].get('secondary_category', '')
             else:
                 rec['ingredients'] = 'Ingredients not available'
+                rec['primary_category'] = ''
+                rec['secondary_category'] = ''
+
+        # === Filter by category using product_info categories ===
+        if selected_category:
+            filtered = []
+            for rec in recommendations:
+                cat1 = str(rec.get('primary_category', '')).lower()
+                cat2 = str(rec.get('secondary_category', '')).lower()
+                if selected_category.lower() in cat1 or selected_category.lower() in cat2:
+                    filtered.append(rec)
+            recommendations = filtered
 
         # === Filter by nut allergy ===
         if has_nut_allergy:
