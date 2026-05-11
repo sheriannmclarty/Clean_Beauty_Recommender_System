@@ -78,8 +78,10 @@ if melanin_users.empty:
     print("⚠️ No melanin-rich users found.")
     print("Available skin tones:", df['skin_tone'].unique())
 else:
-    top_users = melanin_users['author_id'].value_counts().head(20).index.tolist()
-    top_user = random.choice(top_users)
+    # Only use users with at least 5 reviews for better predictions
+    user_counts = melanin_users['author_id'].value_counts()
+    top_users = user_counts[user_counts >= 5].head(20).index.tolist()
+    top_user = random.choice(top_users)          # ✅ THIS LINE WAS MISSING
     user_row = df[df['author_id'] == top_user].iloc[0]
     display_name = generate_ethnic_name()
 
@@ -148,6 +150,7 @@ else:
                 print(f"\n{i}. {rec['product_name']} — {rec['brand_name']}")
                 print(f"   ⭐ Predicted Rating: {rec['predicted_rating']}")
                 print(f"   🧴 Ingredients: {str(rec.get('ingredients', 'N/A'))[:200]}...")
+                print(f"   🎨 Tone: {rec.get('tone_label', 'No tone data')} (score: {rec.get('tone_score', 'N/A')})")
         else:
             print("No matching products found for your preferences.")
 

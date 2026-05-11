@@ -31,10 +31,22 @@ class BiasAdjustedRecommender:
         user_rated = self.ratings_df[self.ratings_df['user'] == user_id]['item'].tolist()
         all_items = set(self.ratings_df['item'])
         unseen_items = all_items - set(user_rated)
-        predictions = [(item, self.predict(user_id, item)) for item in unseen_items]
-        predictions.sort(key=lambda x: x[1], reverse=True)
-        return [{"item": int(item), "predicted_rating": round(score, 2)} for item, score in predictions[:top_n]]
 
+        # Count reviews per item for popularity weighting
+        item_review_counts = self.ratings_df['item'].value_counts().to_dict()
+
+        predictions = []
+        for item in unseen_items:
+            base_score = self.predict(user_id, item)
+            # Add small popularity boost to break ties
+            popularity = item_review_counts.get(item, 1)
+            popularity_factor = round(min(popularity / 1000, 0.05), 4)
+            final_score = round(min(base_score + popularity_factor, 5.0), 2)
+            predictions.append((item, final_score))
+
+        predictions.sort(key=lambda x: x[1], reverse=True)
+        return [{"item": int(item), "predicted_rating": round(score, 2)}
+                for item, score in predictions[:top_n]]
 # === Step 4: Create metadata dict ===
 item_to_meta = df.drop_duplicates(subset='item').set_index('item')[['product_name_x', 'brand_name_x']].to_dict(orient='index')
 
