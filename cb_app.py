@@ -1,3 +1,23 @@
+import os
+import gdown
+
+# === Download data files from Google Drive if not present ===
+def download_data():
+    os.makedirs("data", exist_ok=True)
+
+    files = {
+        "data/product_info.csv": "1IQaIGcywItlj1gyUIErNDtT3-yOR7b7r",
+        "data/filtered_skintone_reviews.csv": "1ozZm2XdzowyWsArPtQPNKiVDJHGkldJM",
+        "data/cosing_annex_prohibited_v2.txt": "1go-cVOZtJmc0ELd_r-axxZZiyrJY5hsu",
+        "data/cosing_annex3_restricted_v2.txt": "1Pl3Mc397zp25a6iJ8tkruHkbTgRpKjt_",
+    }
+
+    for path, file_id in files.items():
+        if not os.path.exists(path):
+            url = f"https://drive.google.com/uc?id={file_id}"
+            gdown.download(url, path, quiet=False)
+
+download_data()
 import streamlit as st
 import pandas as pd
 import random
