@@ -1,5 +1,16 @@
 import pandas as pd
 
+sensitivity_terms = [
+    'eczema', 'rash', 'breakout', 'irritat', 'reaction',
+    'burn', 'sting', 'flare', 'allergic', 'hives', 'sensitive skin'
+]
+
+def compute_sensitivity_score(review_text: str) -> float:
+    if not isinstance(review_text, str):
+        return 0.0
+    text = review_text.lower()
+    count = sum(1 for term in sensitivity_terms if term in text)
+    return round(min(count / 3, 1.0), 3)
 # === Tone signal keywords for melanin-rich skincare ===
 negative_signals = [
     'white cast', 'gray cast', 'grey cast', 'ashy', 'ash',
@@ -56,30 +67,32 @@ def get_product_tone_scores(df: pd.DataFrame,
     product_tone = product_tone.sort_values('avg_tone_score', ascending=False)
     return product_tone
 
-def tone_aware_rerank(recommendations: list,
-                       product_tone_scores: pd.DataFrame,
+def tone_aware_rerank(recommendations: list, product_tone_scores: pd.DataFrame,
                        alpha: float = 0.3) -> list:
-    tone_dict = product_tone_scores.set_index(
-        'product_name_x')['avg_tone_score'].to_dict()
+    tone_dict = product_tone_scores.set_index('product_name_x')['avg_tone_score'].to_dict()
 
     for rec in recommendations:
-        product_name = rec.get('product_name', '')
-        tone_score = tone_dict.get(product_name, 0.0)
-        predicted_rating = rec.get('predicted_rating', 0.0)
+        try:
+            product_name = rec.get('product_name', '')
+            tone_score = float(tone_dict.get(product_name, 0.0))
+            predicted_rating = float(rec.get('predicted_rating', 0.0))
 
-        normalized_rating = (predicted_rating - 1.0) / 4.0
-        combined_score = ((1 - alpha) * normalized_rating +
-                          alpha * ((tone_score + 1) / 2))
+            normalized_rating = (predicted_rating - 1.0) / 4.0
+            combined_score = (1 - alpha) * normalized_rating + alpha * ((tone_score + 1) / 2)
 
-        rec['tone_score'] = round(tone_score, 3)
-        rec['combined_score'] = round(combined_score, 4)
-        rec['tone_label'] = (
-            "✅ Tone Compatible" if tone_score > 0.1
-            else "⚠️ Mixed Reviews" if tone_score >= -0.1
-            else "❌ Tone Concerns"
-        )
+            rec['tone_score'] = round(tone_score, 3)
+            rec['combined_score'] = round(combined_score, 4)
+            rec['tone_label'] = (
+                "✅ Positive skin tone signal" if tone_score > 0.1
+                else "❌ Negative skin tone signal" if tone_score < -0.1
+                else "⚠️ Limited or mixed skin tone signal"
+            )
+        except Exception:
+            rec['tone_score'] = 0.0
+            rec['combined_score'] = 0.0
+            rec['tone_label'] = "⚠️ Limited or mixed skin tone signal"
 
-    recommendations.sort(key=lambda x: x['combined_score'], reverse=True)
+    recommendations.sort(key=lambda x: x.get('combined_score', 0.0), reverse=True)
     return recommendations
 
 # === Demo ===

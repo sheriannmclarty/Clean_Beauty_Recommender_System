@@ -61,8 +61,14 @@ for key, val in categories.items():
 category_choice = input("\nEnter number (or press Enter to skip): ").strip()
 selected_category = categories.get(category_choice, None)
 
-nut_allergy = input("\nDo you have a nut allergy? (yes/no): ").strip().lower()
-has_nut_allergy = nut_allergy == 'yes'
+nut_response = input("\nDo you have a nut allergy? (yes/no): ").strip().lower()
+if nut_response in ["yes", "y"]:
+    has_nut_allergy = True
+elif nut_response in ["no", "n", ""]:
+    has_nut_allergy = False
+else:
+    print("Invalid response. Defaulting to no nut allergy.")
+    has_nut_allergy = False
 
 print(f"\n✅ Preferences saved!")
 if selected_category:

@@ -68,7 +68,7 @@ class BiasAdjustedRecommender:
         for item in unseen_items:
             base_score = self.predict(user_id, item)
             popularity = item_review_counts.get(item, 1)
-            popularity_factor = round(min(popularity / 1000, 0.05), 4)
+            popularity_factor = round(min(popularity / 5000, 0.02), 4)
             final_score = round(min(base_score + popularity_factor, 5.0), 2)
             predictions.append((item, final_score))
         predictions.sort(key=lambda x: x[1], reverse=True)
