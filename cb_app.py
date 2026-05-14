@@ -1,7 +1,6 @@
 import os
 import gdown
 
-# === Download data files from Google Drive if not present ===
 def download_data():
     os.makedirs("data", exist_ok=True)
 
@@ -14,9 +13,8 @@ def download_data():
 
     for path, file_id in files.items():
         if not os.path.exists(path):
-            url = f"https://drive.google.com/uc?id={file_id}"
-            gdown.download(url, path, quiet=False)
-
+            url = f"https://drive.google.com/uc?id={file_id}&export=download&confirm=t"
+            gdown.download(url, path, quiet=False, fuzzy=True)
 download_data()
 import streamlit as st
 import pandas as pd
