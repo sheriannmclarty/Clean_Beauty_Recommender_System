@@ -14,7 +14,7 @@ def download_data():
     for path, file_id in files.items():
         if not os.path.exists(path):
             url = f"https://drive.google.com/uc?id={file_id}&export=download&confirm=t"
-            gdown.download(url, path, quiet=False, fuzzy=True)
+            gdown.download(url, path, quiet=False)
 download_data()
 import streamlit as st
 import pandas as pd
