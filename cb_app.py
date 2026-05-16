@@ -186,11 +186,11 @@ DATA_DIR = BASE_DIR / "data"
 def read_csv_safely(file_path, skiprows=None):
     """
     Reads messy CSV/TXT files safely on Streamlit Cloud.
-    Important: do not use low_memory=False with engine='python'.
+    Does not use low_memory=False with engine='python'.
     """
 
     try:
-        return pd.read_csv(
+        df = pd.read_csv(
             file_path,
             encoding="utf-8",
             engine="python",
@@ -198,7 +198,7 @@ def read_csv_safely(file_path, skiprows=None):
             skiprows=skiprows
         )
     except UnicodeDecodeError:
-        return pd.read_csv(
+        df = pd.read_csv(
             file_path,
             encoding="cp1252",
             engine="python",
@@ -206,6 +206,65 @@ def read_csv_safely(file_path, skiprows=None):
             skiprows=skiprows
         )
 
+    # Clean column names
+    df.columns = (
+        df.columns
+        .astype(str)
+        .str.strip()
+        .str.replace("\ufeff", "", regex=False)
+    )
+
+    return df
+
+
+def check_required_columns(df, required_cols, file_label):
+    """
+    Stops the app with a clear message if expected columns are missing.
+    This prevents the redacted Streamlit Cloud error screen.
+    """
+
+    missing = [col for col in required_cols if col not in df.columns]
+
+    if missing:
+        st.error(f"{file_label} is missing required column(s): {missing}")
+        st.write("Columns found in the file:")
+        st.write(list(df.columns))
+        st.stop()
+
+
+# ============================================================
+# Load Data
+# ============================================================
+
+@st.cache_data
+def load_data():
+    df = read_csv_safely(DATA_DIR / "filtered_skintone_reviews.csv")
+
+    required_cols = ["author_id", "product_name_x", "rating_x"]
+    check_required_columns(df, required_cols, "filtered_skintone_reviews.csv")
+
+    # Optional but useful for tone filtering
+    if "skin_tone" not in df.columns:
+        df["skin_tone"] = ""
+
+    if "review_text" not in df.columns:
+        df["review_text"] = ""
+
+    if "brand_name_x" not in df.columns:
+        df["brand_name_x"] = "Unknown"
+
+    df = df.dropna(subset=["author_id", "product_name_x", "rating_x"])
+    df["author_id"] = df["author_id"].astype(str)
+    df["product_name_x"] = df["product_name_x"].astype(str)
+    df["brand_name_x"] = df["brand_name_x"].astype(str)
+
+    df["rating_x"] = pd.to_numeric(df["rating_x"], errors="coerce")
+    df = df.dropna(subset=["rating_x"])
+
+    df["user"] = df["author_id"].astype("category").cat.codes
+    df["item"] = df["product_name_x"].astype("category").cat.codes
+
+    return df
 
 # ============================================================
 # Helpers
@@ -504,13 +563,20 @@ def load_products():
 
 
 @st.cache_data
+@st.cache_data
 def load_tone_scores():
     tone_df = read_csv_safely(DATA_DIR / "filtered_skintone_reviews.csv")
+
+    required_cols = ["author_id", "product_name_x", "review_text"]
+    missing = [col for col in required_cols if col not in tone_df.columns]
+
+    if missing:
+        # Do not crash the app if tone scores cannot be built
+        return {}
+
     tone_df = tone_df.dropna(subset=["author_id", "product_name_x", "review_text"])
 
     return get_product_tone_scores(tone_df)
-
-
 @st.cache_data
 def load_cosing():
     annex2 = read_csv_safely(DATA_DIR / "cosing_annex_prohibited_v2.txt", skiprows=4)
