@@ -12,9 +12,11 @@ def download_data():
     }
 
     for path, file_id in files.items():
-        if not os.path.exists(path):
-            url = f"https://drive.google.com/uc?id={file_id}&export=download&confirm=t"
-            gdown.download(url, path, quiet=False)
+        # Skip only if file exists AND is large enough to be real data
+        if os.path.exists(path) and os.path.getsize(path) > 10000:
+            continue
+        url = f"https://drive.google.com/uc?id={file_id}"
+        gdown.download(url, path, quiet=False)
 download_data()
 import streamlit as st
 import pandas as pd
@@ -157,12 +159,31 @@ demo_categories = ["Moisturizers","Serums & Treatments","Cleansers","Sunscreen",
 # === Load data ===
 @st.cache_data
 def load_data():
-    df = pd.read_csv("data/filtered_skintone_reviews.csv", low_memory=False)
-    df = df.dropna(subset=['author_id','product_name_x','rating_x'])
-    df['author_id'] = df['author_id'].astype(str)
-    df['rating_x'] = pd.to_numeric(df['rating_x'], errors='coerce')
-    df['user'] = df['author_id'].astype('category').cat.codes
-    df['item'] = df['product_name_x'].astype('category').cat.codes
+    try:
+        df = pd.read_csv(
+            "data/filtered_skintone_reviews.csv",
+            low_memory=False,
+            encoding="utf-8",
+            engine="python",
+            on_bad_lines="skip"
+        )
+    except UnicodeDecodeError:
+        df = pd.read_csv(
+            "data/filtered_skintone_reviews.csv",
+            low_memory=False,
+            encoding="cp1252",
+            engine="python",
+            on_bad_lines="skip"
+        )
+
+    df = df.dropna(subset=["author_id", "product_name_x", "rating_x"])
+    df["author_id"] = df["author_id"].astype(str)
+    df["rating_x"] = pd.to_numeric(df["rating_x"], errors="coerce")
+    df = df.dropna(subset=["rating_x"])
+
+    df["user"] = df["author_id"].astype("category").cat.codes
+    df["item"] = df["product_name_x"].astype("category").cat.codes
+
     return df
 
 @st.cache_data
@@ -173,8 +194,24 @@ def load_products():
 
 @st.cache_data
 def load_tone_scores():
-    tone_df = pd.read_csv("data/filtered_skintone_reviews.csv", low_memory=False)
-    tone_df = tone_df.dropna(subset=['author_id','product_name_x','review_text'])
+    try:
+        tone_df = pd.read_csv(
+            "data/filtered_skintone_reviews.csv",
+            low_memory=False,
+            encoding="utf-8",
+            engine="python",
+            on_bad_lines="skip"
+        )
+    except UnicodeDecodeError:
+        tone_df = pd.read_csv(
+            "data/filtered_skintone_reviews.csv",
+            low_memory=False,
+            encoding="cp1252",
+            engine="python",
+            on_bad_lines="skip"
+        )
+
+    tone_df = tone_df.dropna(subset=["author_id", "product_name_x", "review_text"])
     return get_product_tone_scores(tone_df)
 
 @st.cache_data
